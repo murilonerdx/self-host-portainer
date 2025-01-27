@@ -153,5 +153,73 @@ Para subir a stack do Portainer, utilize o comando abaixo:
 
 ```bash
 docker stack deploy -c portainer.yaml portainer
+docker stack deploy -c traefik.yaml traefik
+```
+
+## Exemplo aplicação spring boot
+
+```bash
+version: "3.8"
+
+services:
+  db:
+    image: postgres:latest  # Usando a imagem oficial do PostgreSQL
+    environment:
+      POSTGRES_DB: auth
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: senha
+      PGDATA: /data/postgres  # Localização dos dados dentro do container
+    networks:
+      - services  # Usando a rede overlay
+    ports:
+      - "5433:5432"  # Porta do host mapeada para o container
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # Volume para persistência de dados
+
+  ms-auth:
+    image: <seu username>/servico # Nome do Dockerfile (pode ser alterado se necessário)
+    ports:
+      - "8084:8084"  # Porta exposta pelo serviço
+    environment:
+      JAVA_OPTS: "-Xms256m -Xmx1024m -XX:+UseG1GC"
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: auth
+      DB_USER: postgres
+      DB_PASSWORD: senha
+    depends_on:
+      - db  # Garante que o serviço `db` seja iniciado antes
+    networks:
+      - services  # Conectado à mesma rede overlay
+      - traefik_public
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          memory: 1G  # Limite de memória para a aplicação
+          cpus: "1.0"  # Limite de 1 vCPU
+        reservations:
+          memory: 512M  # Memória reservada para a aplicação
+          cpus: "0.5"  # Reservado 0.5 vCPU
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.ms-auth.rule=Host(`aqui.seu.subdominio`)
+        - traefik.http.routers.ms-auth.entrypoints=websecure
+        - traefik.http.routers.ms-auth.tls.certresolver=le
+        - traefik.http.routers.ms-auth.service=ms-auth
+        - traefik.http.services.ms-auth.loadbalancer.server.port=8084
+
+networks:
+  services:
+    driver: overlay
+  traefik_public:
+    external: true
+
+volumes:
+  postgres_data:  # Define o volume para persistência dos dados do banco
 
 ```
