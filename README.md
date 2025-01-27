@@ -223,3 +223,86 @@ volumes:
   postgres_data:  # Define o volume para persistência dos dados do banco
 
 ```
+
+
+## Postgres
+
+```bash
+version: "3.8"
+
+
+# mais info: https://youtu.be/tQ6-A1wl-C0
+services:
+  postgres:
+    image: postgres:15
+    command: [postgres, --max_connections=100]
+    networks:
+      - app_network
+    environment:
+      POSTGRES_PASSWORD: <SUA_SENHA_AQUI>
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+
+
+volumes:
+  postgres_data:
+    external: true
+
+
+networks:
+  app_network:
+    external: true
+
+```
+
+## Mongo
+```bash
+version: "3.8"
+
+
+services:
+  mongodb:
+    image: mongo:7
+    networks:
+      - app_network
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_configdb_data:/data/configdb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: <USUARIO_AQUI>
+      MONGO_INITDB_ROOT_PASSWORD: <SUA_SENHA_AQUI>
+      PUID: 1000
+      PGID: 1000
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+
+volumes:
+  mongodb_data:
+    external: true
+  mongodb_configdb_data:
+    external: true
+
+
+networks:
+  app_network:
+    external: true
+```
